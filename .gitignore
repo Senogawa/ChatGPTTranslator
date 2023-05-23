@@ -1,0 +1,6 @@
+venv
+test.py
+client_info.json
+chatgpt_config.cnf
+__pycache__
+__pycache__/

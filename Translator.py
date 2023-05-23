@@ -2,6 +2,7 @@ from chatgpt_config import Config
 import re
 import requests
 import googletrans
+from logger_settings import logger
 
 class Text:
     """
@@ -32,6 +33,10 @@ class ChatGPTTranslator:
         {
             "open": '"',
             "close": '"'
+        },
+        {
+            "open": "《",
+            "close": "》"
         }
     ]
 
@@ -57,11 +62,29 @@ class ChatGPTTranslator:
                 pattern = f'({cs[int(i)]["open"]}.*?{cs[int(i)]["close"]})'
                 #print(pattern)
                 re_result = re.findall(pattern = pattern, string = test_chatgpt_answer)
-                for k in range(len(re_result)):
-                    re_result[int(k)] = re_result[int(k)].replace(cs[i]["open"], "").replace(cs[i]["close"], "")
-                break
+                # for k in range(len(re_result)): #TODO отключено во время тестирования
+                #     re_result[int(k)] = re_result[int(k)].replace(cs[i]["open"], "").replace(cs[i]["close"], "")
+                #     #print(cs[i])
+
+                needs_lang_is = False
+                for check_language in re_result:
+                    try:
+                        ch_lang = GoogleTranslator.detect(check_language).lang
+                        if lang in ch_lang:
+                            needs_lang_is = True
+
+                    except Exception as ex:
+                        logger.error("Не удалось определить язык на моменте проверки")
+                        print(ex)
+                        return
+                
+                if needs_lang_is:
+                    break
+
+                continue
 
         if re_result is None:
+            logger.error(f"Не удалось найти переведенный текст, ответ {test_chatgpt_answer}")
             return f"Не удалось найти переведенный текст, ответ {test_chatgpt_answer}"
         
         print(re_result)
@@ -69,9 +92,14 @@ class ChatGPTTranslator:
             try:
                 translated_lang = GoogleTranslator.detect(result).lang
                 if lang in translated_lang:
+                    for cs_for_replace in cs:
+                        result = result.replace(cs_for_replace["open"], "")
+                        result = result.replace(cs_for_replace["close"], "")
+
                     return Text(primordial_text = text, translated_text = result)
 
             except Exception as ex:
+                logger.error(f"Не удалось определить переведенный язык\n{ex}")
                 return f"Не удалось определить переведенный язык\n{ex}"
 
     def retranslate_text(self) -> Text:
@@ -84,4 +112,4 @@ class ChatGPTTranslator:
 
 if __name__ == "__main__":
     Trans = ChatGPTTranslator()
-    print(Trans.translate_text("Переведи на китайский", '"Переведи на китайский" на китайском языке можно сказать "翻译成中文" (fānyì chéng zhōngwén).'))
+    print(Trans.translate_text("Переведи на китайский", 'Translate "<<Chinese beeeee buuu>>" to Chinese (simplified) is "《中文嗡嗡嗡嗡嗡嗡嗡嗡》" (Zhōngwén wēng wēng wēng wēng wēng wēng wēng).'))
